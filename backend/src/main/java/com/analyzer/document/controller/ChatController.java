@@ -8,7 +8,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${cors.allowed.origins}")
 public class ChatController {
 
     private final ChatService chatService;
