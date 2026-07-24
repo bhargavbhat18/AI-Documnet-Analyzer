@@ -8,6 +8,8 @@ import com.analyzer.document.rag.DocumentChunker;
 import com.analyzer.document.rag.DocumentVectorStoreService;
 import com.analyzer.document.repository.DocumentMetadataRepository;
 import com.analyzer.document.repository.UserNotificationRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +24,8 @@ import java.util.UUID;
 
 @Service
 public class DocumentService {
+
+    private static final Logger logger = LoggerFactory.getLogger(DocumentService.class);
 
     private final List<DocumentParser> parsers;
     private final DocumentChunker chunker;
@@ -45,28 +49,50 @@ public class DocumentService {
 
     public DocumentMetadata uploadDocument(MultipartFile file) throws IOException {
         String filename = file.getOriginalFilename();
+        logger.info("[UPLOAD START] Received upload request for file: {}, size: {} bytes, content type: {}", 
+                filename, file.getSize(), file.getContentType());
         
+        if (file.isEmpty()) {
+            logger.error("[UPLOAD FAILED] File is empty: {}", filename);
+            throw new IllegalArgumentException("File cannot be empty.");
+        }
+        
+        logger.info("[UPLOAD STEP 1] Locating suitable parser for file: {}", filename);
         DocumentParser parser = parsers.stream()
                 .filter(p -> p.supports(filename))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported file type: " + filename));
+                .orElseThrow(() -> {
+                    logger.error("[UPLOAD FAILED] No parser supports file type: {}", filename);
+                    return new IllegalArgumentException("Unsupported file type: " + filename);
+                });
                 
+        logger.info("[UPLOAD STEP 2] Parsing document contents into text chunks: {}", filename);
         List<DocumentChunk> rawPages = parser.parse(file);
+        logger.info("[UPLOAD STEP 2 SUCCESS] Parsed document: {}. Extracted {} raw text pages/sections.", 
+                filename, rawPages.size());
         
+        logger.info("[UPLOAD STEP 3] Splitting raw text into semantic search chunks: {}", filename);
         List<DocumentChunk> chunkedPages = chunker.chunk(rawPages);
+        logger.info("[UPLOAD STEP 3 SUCCESS] Chunked document: {}. Created {} semantic search chunks.", 
+                filename, chunkedPages.size());
         
+        logger.info("[UPLOAD STEP 4] Generating embeddings & saving chunks to ChromaDB vector store: {}", filename);
         vectorStoreService.addChunks(chunkedPages);
+        logger.info("[UPLOAD STEP 4 SUCCESS] Successfully stored chunks in ChromaDB for document: {}", filename);
         
-        // Save file to disk
+        logger.info("[UPLOAD STEP 5] Writing uploaded file to local storage directory: {}", UPLOAD_DIR);
         Path uploadPath = Paths.get(UPLOAD_DIR);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
+            logger.info("Created local uploads directory at: {}", uploadPath.toAbsolutePath());
         }
         
         String uniqueFilename = UUID.randomUUID().toString() + "_" + filename;
         Path filePath = uploadPath.resolve(uniqueFilename);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        logger.info("[UPLOAD STEP 5 SUCCESS] Wrote file successfully on disk as: {}", uniqueFilename);
         
+        logger.info("[UPLOAD STEP 6] Persisting document metadata to MySQL database: {}", filename);
         DocumentMetadata metadata = DocumentMetadata.builder()
                 .filename(uniqueFilename)
                 .originalFilename(filename)
@@ -77,6 +103,7 @@ public class DocumentService {
                 .build();
                 
         DocumentMetadata saved = metadataRepository.save(metadata);
+        logger.info("[UPLOAD STEP 6 SUCCESS] Metadata saved to MySQL database with ID: {}", saved.getId());
         
         // Save notification
         notificationRepository.save(UserNotification.builder()
@@ -87,6 +114,7 @@ public class DocumentService {
                 .isRead(false)
                 .build());
                 
+        logger.info("[UPLOAD COMPLETE SUCCESS] Document {} processed completely and ready for search/chat.", filename);
         return saved;
     }
     

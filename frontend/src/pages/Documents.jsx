@@ -130,7 +130,13 @@ const Documents = () => {
     } catch (error) {
       console.error("Upload failed:", error);
       setIsUploading(false);
-      alert("Upload failed. Please try again.");
+      
+      const responseData = error.response?.data;
+      let errorMsg = "Network error or backend unavailable.";
+      if (responseData) {
+        errorMsg = typeof responseData === 'object' && responseData.message ? responseData.message : responseData;
+      }
+      alert(errorMsg);
     }
   };
 
