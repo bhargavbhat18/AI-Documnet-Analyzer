@@ -22,14 +22,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Documents", path: "/documents", icon: FileText },
     { name: "AI Chat", path: "/chat", icon: MessageSquare },
-    { name: "Recent Files", path: "/recent", icon: Clock, isMock: true },
-    { name: "Analytics", path: "/analytics", icon: BarChart3, isMock: true },
-    { name: "Templates", path: "/templates", icon: Layers, isMock: true },
+    { name: "Recent Files", path: "/recent", icon: Clock },
+    { name: "Analytics", path: "/analytics", icon: BarChart3 },
+    { name: "Templates", path: "/templates", icon: Layers },
   ];
 
   const bottomItems = [
-    { name: "Settings", path: "/settings", icon: Settings, isMock: true },
-    { name: "Help Center", path: "/help", icon: HelpCircle, isMock: true },
+    { name: "Settings", path: "/settings", icon: Settings },
+    { name: "Help Center", path: "/help", icon: HelpCircle },
   ];
 
   return (
@@ -88,12 +88,12 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
 
         {/* Navigation Items */}
         <div className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
-          {navItems.map((item) => {
+              {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.name}
-                to={item.isMock ? "#" : item.path}
+                to={item.path}
                 onClick={() => isMobileOpen && setIsMobileOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden text-sm",
@@ -117,7 +117,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobileOpen, setIsMobileOpen })
           {bottomItems.map((item) => (
             <Link
               key={item.name}
-              to="#"
+              to={item.path}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 transition-all text-sm group"
             >
               <item.icon className="w-4.5 h-4.5 text-slate-400 group-hover:text-slate-600 shrink-0" />

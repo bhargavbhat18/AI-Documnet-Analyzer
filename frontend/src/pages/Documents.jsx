@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   UploadCloud, 
   File, 
@@ -35,7 +36,20 @@ const formatBytes = (bytes) => {
 };
 
 const Documents = () => {
+  const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
+  
+  const handleQuickAction = (title) => {
+    if (title === "Analyze Content") {
+      navigate("/chat", { state: { promptTemplate: "Please analyze the uploaded documents and provide key details." } });
+    } else if (title === "Summarize") {
+      navigate("/chat", { state: { promptTemplate: "Please summarize the main findings of my documents." } });
+    } else if (title === "Translate") {
+      navigate("/chat", { state: { promptTemplate: "Please translate the key sections of my documents into Spanish." } });
+    } else if (title === "OCR Scan") {
+      navigate("/chat", { state: { promptTemplate: "Can you extract all raw text and structural components from the documents?" } });
+    }
+  };
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -215,6 +229,7 @@ const Documents = () => {
         {quickActions.map((action, i) => (
           <div 
             key={i} 
+            onClick={() => handleQuickAction(action.title)}
             className="group p-4 bg-white border border-slate-200/60 rounded-2xl shadow-sm transition-all duration-300 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 cursor-pointer relative overflow-hidden"
           >
             <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl ${action.color} opacity-[0.04] group-hover:opacity-[0.08] rounded-bl-full transition-opacity`} />
