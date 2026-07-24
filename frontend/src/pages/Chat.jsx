@@ -71,10 +71,14 @@ const Chat = () => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("Chat error:", error);
+      const errDetail = error.response?.data?.error
+        || error.response?.data?.message
+        || error.message
+        || "Unknown error";
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         type: "bot", 
-        content: "Sorry, I encountered an error while analyzing the documents.",
+        content: `⚠️ Chat failed: ${errDetail}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
     } finally {
@@ -102,10 +106,14 @@ const Chat = () => {
       }]);
     } catch (error) {
       console.error("Summarize error:", error);
+      const errDetail = error.response?.data?.error
+        || error.response?.data?.message
+        || error.message
+        || "Unknown error";
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         type: "bot", 
-        content: "Sorry, I couldn't generate a summary.",
+        content: `⚠️ Summarize failed: ${errDetail}`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
     } finally {
