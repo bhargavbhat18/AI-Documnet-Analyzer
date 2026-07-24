@@ -5,21 +5,20 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "document_metadata")
+@Table(name = "user_notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DocumentMetadata {
+public class UserNotification {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    private String filename;
-    private String originalFilename;
-    private String contentType;
-    private Long size;
-    private LocalDateTime uploadDate;
-    private LocalDateTime lastOpened;
+    private String title;
+    private String message;
+    private String type; // info, success, warning, error
+    private LocalDateTime timestamp;
+    private boolean isRead;
 }

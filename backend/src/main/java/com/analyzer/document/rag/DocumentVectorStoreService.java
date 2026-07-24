@@ -2,9 +2,9 @@ package com.analyzer.document.rag;
 
 import com.analyzer.document.dto.DocumentChunk;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,5 +31,36 @@ public class DocumentVectorStoreService {
                 .collect(Collectors.toList());
         
         vectorStore.add(documents);
+    }
+
+    public void deleteChunksByDocument(String documentName) {
+        SearchRequest request = SearchRequest.query(" ")
+                .withFilterExpression("documentName == '" + documentName + "'")
+                .withTopK(200);
+        List<Document> chunks = vectorStore.similaritySearch(request);
+        if (!chunks.isEmpty()) {
+            List<String> ids = chunks.stream().map(Document::getId).collect(Collectors.toList());
+            vectorStore.delete(ids);
+        }
+    }
+
+    public void renameDocumentChunks(String oldName, String newName) {
+        SearchRequest request = SearchRequest.query(" ")
+                .withFilterExpression("documentName == '" + oldName + "'")
+                .withTopK(200);
+        List<Document> chunks = vectorStore.similaritySearch(request);
+        if (!chunks.isEmpty()) {
+            List<Document> updatedChunks = chunks.stream()
+                    .map(doc -> new Document(
+                            doc.getId(),
+                            doc.getContent(),
+                            Map.of(
+                                    "documentName", newName,
+                                    "pageNumber", doc.getMetadata().getOrDefault("pageNumber", 1)
+                            )
+                    ))
+                    .collect(Collectors.toList());
+            vectorStore.add(updatedChunks);
+        }
     }
 }

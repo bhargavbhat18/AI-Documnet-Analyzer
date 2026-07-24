@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 import { 
   Send, 
   Bot, 
@@ -11,10 +12,12 @@ import {
   Check,
   BookOpen,
   HelpCircle,
-  Clock
+  Clock,
+  Trash
 } from "lucide-react";
 
 const Chat = () => {
+  const location = useLocation();
   const [messages, setMessages] = useState([
     { 
       id: 1, 
@@ -35,6 +38,13 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Read promptTemplate passed from Templates page state
+  useEffect(() => {
+    if (location.state?.promptTemplate) {
+      setInput(location.state.promptTemplate);
+    }
+  }, [location.state]);
 
   const handleSend = async (textToSend) => {
     const queryText = textToSend || input.trim();
@@ -110,12 +120,22 @@ const Chat = () => {
   };
 
   const handleRegenerate = () => {
-    // Find last user message
     const userMessages = messages.filter(m => m.type === "user");
     if (userMessages.length > 0) {
       const lastUserMsg = userMessages[userMessages.length - 1].content;
       handleSend(lastUserMsg);
     }
+  };
+
+  const handleClearChat = () => {
+    setMessages([
+      { 
+        id: 1, 
+        type: "bot", 
+        content: "Hello! I'm your document analysis assistant. Ask me anything about your uploaded documents.",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
   };
 
   const suggestions = [
@@ -132,13 +152,23 @@ const Chat = () => {
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">AI Assistant</h1>
           <p className="text-slate-500 text-sm mt-1.5">Chat and query your document knowledge base in real-time.</p>
         </div>
-        <button 
-          onClick={handleSummarize}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-colors shadow-sm cursor-pointer"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Summarize Workspace</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleClearChat}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            title="Clear conversation"
+          >
+            <Trash className="w-3.5 h-3.5" />
+            <span>Clear Chat</span>
+          </button>
+          <button 
+            onClick={handleSummarize}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-colors shadow-sm cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Summarize Workspace</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Chat Box */}
@@ -174,7 +204,7 @@ const Chat = () => {
                     ))}
                   </div>
 
-                  {/* Copy Button (Bot Only, Hover triggered) */}
+                  {/* Copy Button (Bot Only) */}
                   {msg.type === "bot" && (
                     <button 
                       onClick={() => copyToClipboard(msg.content, msg.id)}
@@ -222,7 +252,7 @@ const Chat = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggested Prompts (when no queries exist yet) */}
+        {/* Suggested Prompts */}
         {messages.length === 1 && !isLoading && (
           <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/20">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Suggested Prompts</p>
