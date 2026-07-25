@@ -29,6 +29,9 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [selectedDoc, setSelectedDoc] = useState("");
+  const [chatMode, setChatMode] = useState("all"); // "all" or "current"
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -38,6 +41,25 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Load document list from backend
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        const response = await axios.get("/api/documents");
+        setDocuments(response.data);
+        if (response.data.length > 0) {
+          // Sort to find the latest uploaded document
+          const sorted = [...response.data].sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+          setSelectedDoc(sorted[0].originalFilename);
+          setChatMode("current"); // Default to chat with latest uploaded document
+        }
+      } catch (err) {
+        console.error("Error loading document list for chat context selector:", err);
+      }
+    };
+    fetchDocs();
+  }, []);
 
   // Read promptTemplate passed from Templates page state
   useEffect(() => {
@@ -61,11 +83,16 @@ const Chat = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("/api/chat", { query: queryText });
+      const payload = {
+        query: queryText,
+        documentName: chatMode === "current" ? selectedDoc : ""
+      };
+      const response = await axios.post("/api/chat", payload);
       const botMessage = {
         id: Date.now() + 1,
         type: "bot",
         content: response.data.response,
+        sources: response.data.sources || [],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botMessage]);
@@ -97,7 +124,10 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     
     try {
-      const response = await axios.post("/api/chat/summarize", {});
+      const payload = {
+        documentName: chatMode === "current" ? selectedDoc : ""
+      };
+      const response = await axios.post("/api/chat/summarize", payload);
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         type: "bot", 
@@ -182,6 +212,68 @@ const Chat = () => {
       {/* Main Chat Box */}
       <div className="glass-card flex-1 flex flex-col overflow-hidden relative border border-slate-200/60 bg-white/70 backdrop-blur-md">
         
+        {/* Document Selection Control Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-slate-200/50 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chat Scope:</span>
+            <div className="flex rounded-lg bg-slate-200/60 p-0.5 border border-slate-300/30">
+              <button
+                type="button"
+                onClick={() => setChatMode("all")}
+                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                  chatMode === "all"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                All Documents
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatMode("current");
+                  if (documents.length > 0 && !selectedDoc) {
+                    setSelectedDoc(documents[0].originalFilename);
+                  }
+                }}
+                className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                  chatMode === "current"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Current Document
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {chatMode === "current" ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Currently Analyzing:</span>
+                <select
+                  value={selectedDoc}
+                  onChange={(e) => setSelectedDoc(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-sm"
+                >
+                  {documents.map((doc) => (
+                    <option key={doc.id} value={doc.originalFilename}>
+                      📄 {doc.originalFilename}
+                    </option>
+                  ))}
+                  {documents.length === 0 && (
+                    <option value="">No documents uploaded</option>
+                  )}
+                </select>
+              </div>
+            ) : (
+              <span className="text-[10px] font-medium text-slate-400 italic">
+                Analyzing all {documents.length} document(s) in workspace
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg) => (
@@ -211,6 +303,21 @@ const Chat = () => {
                       <p key={i} className="m-0">{line}</p>
                     ))}
                   </div>
+
+                  {/* Sources display */}
+                  {msg.type === "bot" && msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-3.5 pt-2.5 border-t border-slate-200/50 flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Answer generated from:</span>
+                      {msg.sources.map((src, idx) => (
+                        <span 
+                          key={idx} 
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/40 border border-slate-300/30 text-slate-600 text-[10px] font-medium"
+                        >
+                          📄 {src}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Copy Button (Bot Only) */}
                   {msg.type === "bot" && (

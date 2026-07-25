@@ -1,5 +1,6 @@
 package com.analyzer.document.rag;
 
+import com.analyzer.document.dto.ChatResponse;
 import com.analyzer.document.entity.DocumentMetadata;
 import com.analyzer.document.repository.DocumentMetadataRepository;
 import org.springframework.ai.chat.client.ChatClient;
@@ -8,6 +9,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,7 +28,7 @@ public class ChatService {
         this.metadataRepository = metadataRepository;
     }
 
-    public String chat(String query, String documentName) {
+    public ChatResponse chat(String query, String documentName) {
         SearchRequest searchRequest;
         
         if (documentName != null && !documentName.isEmpty()) {
@@ -49,24 +51,49 @@ public class ChatService {
             System.out.println(String.format("  Chunk #%d - Metadata: %s - Content: %s", i + 1, doc.getMetadata(), snippet.replace("\n", " ")));
         }
 
+        // Extract list of unique source document names retrieved from metadata
+        List<String> sources = similarDocuments.stream()
+                .map(d -> (String) d.getMetadata().getOrDefault("documentName", "Unknown"))
+                .distinct()
+                .collect(Collectors.toList());
+
         String context = similarDocuments.stream()
                 .map(Document::getContent)
                 .collect(Collectors.joining("\n\n"));
 
+        String docNameHeader = (documentName != null && !documentName.isEmpty()) ? documentName : "All Uploaded Documents";
+
         String systemPrompt = """
-            You are a helpful assistant for document analysis.
-            Answer the user's question using ONLY the provided context from the uploaded documents.
-            If you cannot answer the question based on the context, say "I don't have enough information in the documents to answer that."
+            You are an AI assistant.
+            Answer ONLY using the following document context.
+            
+            Document Name:
+            {documentNameHeader}
             
             Context:
             {context}
+            
+            User Question:
+            {query}
+            
+            If the answer is not found in the document, respond EXACTLY:
+            "The uploaded document does not contain this information."
+            Do NOT hallucinate or use any external knowledge.
             """;
             
-        return chatClient.prompt()
-                .system(s -> s.text(systemPrompt).param("context", context))
+        String responseContent = chatClient.prompt()
+                .system(s -> s.text(systemPrompt)
+                              .param("documentNameHeader", docNameHeader)
+                              .param("context", context)
+                              .param("query", query))
                 .user(query)
                 .call()
                 .content();
+
+        return ChatResponse.builder()
+                .response(responseContent)
+                .sources(sources)
+                .build();
     }
 
     public String summarize(String documentName) {

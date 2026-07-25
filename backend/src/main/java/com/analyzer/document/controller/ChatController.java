@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+import com.analyzer.document.dto.ChatResponse;
+
 @RestController
 @RequestMapping("/api/chat")
 public class ChatController {
@@ -17,7 +19,7 @@ public class ChatController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, String>> chat(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> chat(@RequestBody Map<String, String> request) {
         String query = request.get("query");
         String documentName = request.get("documentName");
         
@@ -26,8 +28,8 @@ public class ChatController {
         }
         
         try {
-            String response = chatService.chat(query, documentName);
-            return ResponseEntity.ok(Map.of("response", response));
+            ChatResponse response = chatService.chat(query, documentName);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
