@@ -43,9 +43,10 @@ public class AiConfig {
     @Bean
     @Primary
     public OpenAiEmbeddingModel openAiEmbeddingModel() {
-        // Cohere OpenAI-compatible endpoint — MUST use /compatibility/v1, NOT /v1
-        // /v1 is Cohere's native API and is NOT compatible with OpenAI request format
-        String cohereCompatibleUrl = "https://api.cohere.com/compatibility/v1";
+        // Cohere OpenAI-compatible base URL. Spring AI internally appends "/v1/embeddings",
+        // so setting the base to "https://api.cohere.com/compatibility" results in:
+        // "https://api.cohere.com/compatibility/v1/embeddings"
+        String cohereCompatibleUrl = "https://api.cohere.com/compatibility";
         OpenAiApi openAiApi = new OpenAiApi(cohereCompatibleUrl, cohereApiKey);
 
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
