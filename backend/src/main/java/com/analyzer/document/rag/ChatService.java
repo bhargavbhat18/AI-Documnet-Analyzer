@@ -129,60 +129,44 @@ public class ChatService {
     }
 
     public String summarize(String documentName) {
-        List<String> targetDocuments;
-        
+        SearchRequest searchRequest;
+        String targetLabel;
+
         if (documentName != null && !documentName.isEmpty()) {
-            targetDocuments = List.of(documentName);
-        } else {
-            targetDocuments = metadataRepository.findAll().stream()
-                .map(DocumentMetadata::getOriginalFilename)
-                .distinct()
-                .collect(Collectors.toList());
-        }
-
-        if (targetDocuments.isEmpty()) {
-            return "No documents have been uploaded yet. Please upload a PDF or DOCX file first.";
-        }
-
-        StringBuilder overallSummary = new StringBuilder();
-
-        for (String docName : targetDocuments) {
-            SearchRequest searchRequest = SearchRequest.query("overview and main content of the document")
-                .withFilterExpression("documentName == '" + docName + "'")
+            searchRequest = SearchRequest.query("summary, overview, and main concepts of the document")
+                .withFilterExpression("documentName == '" + documentName + "'")
                 .withTopK(20);
-            
-            List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
-            
-            if (similarDocuments.isEmpty()) {
-                continue;
-            }
-            
-            String context = similarDocuments.stream()
+            targetLabel = documentName;
+        } else {
+            searchRequest = SearchRequest.query("summary, overview, and main concepts of all documents")
+                .withTopK(25);
+            targetLabel = "all uploaded documents in the workspace";
+        }
+
+        List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
+        
+        if (similarDocuments.isEmpty()) {
+            return "No text context could be retrieved from the vector store to summarize " + targetLabel + ". Please ensure your files are uploaded and processed successfully.";
+        }
+
+        String context = similarDocuments.stream()
                 .map(Document::getContent)
                 .collect(Collectors.joining("\n\n"));
-                
-            String systemPrompt = """
-                You are a helpful assistant for document analysis.
-                Provide a comprehensive and well-structured summary of the provided document: {documentName}.
-                
-                Document Text:
-                {context}
-                """;
-                
-            String docSummary = chatClient.prompt()
+
+        String systemPrompt = """
+            You are a helpful assistant for document analysis.
+            Provide a comprehensive, well-structured, and concise summary of the provided documents: {targetLabel}.
+            
+            Document Text Context:
+            {context}
+            """;
+
+        return chatClient.prompt()
                 .system(s -> s.text(systemPrompt)
-                              .param("documentName", docName)
+                              .param("targetLabel", targetLabel)
                               .param("context", context))
-                .user("Please summarize the document.")
+                .user("Please summarize the documents.")
                 .call()
                 .content();
-                
-            if (overallSummary.length() > 0) {
-                overallSummary.append("\n\n---\n\n");
-            }
-            overallSummary.append("### Summary for ").append(docName).append("\n\n").append(docSummary);
-        }
-
-        return overallSummary.toString();
     }
 }
