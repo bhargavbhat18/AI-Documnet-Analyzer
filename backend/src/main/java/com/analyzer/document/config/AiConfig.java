@@ -33,7 +33,19 @@ public class AiConfig {
     @Bean
     @Primary
     public OpenAiChatModel openAiChatModel() {
-        OpenAiApi openAiApi = new OpenAiApi(chatBaseUrl, chatApiKey);
+        // Override the default completionsPath "/v1/chat/completions" to "/chat/completions" for Gemini OpenAI compatibility
+        org.springframework.web.client.RestClient.Builder restClientBuilder = org.springframework.web.client.RestClient.builder();
+        org.springframework.web.reactive.function.client.WebClient.Builder webClientBuilder = org.springframework.web.reactive.function.client.WebClient.builder();
+        
+        OpenAiApi openAiApi = new OpenAiApi(
+                chatBaseUrl,
+                chatApiKey,
+                "/chat/completions",
+                "/embeddings",
+                restClientBuilder,
+                webClientBuilder,
+                new org.springframework.web.client.DefaultResponseErrorHandler()
+        );
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withModel(chatModel)
                 .build();
