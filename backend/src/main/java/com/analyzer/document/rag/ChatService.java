@@ -38,6 +38,16 @@ public class ChatService {
         }
         
         List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
+        
+        System.out.println("[CHAT SERVICE] Retrieved " + similarDocuments.size() + " chunks from ChromaDB for query: " + query);
+        for (int i = 0; i < similarDocuments.size(); i++) {
+            Document doc = similarDocuments.get(i);
+            String snippet = doc.getContent();
+            if (snippet.length() > 100) {
+                snippet = snippet.substring(0, 100) + "...";
+            }
+            System.out.println(String.format("  Chunk #%d - Metadata: %s - Content: %s", i + 1, doc.getMetadata(), snippet.replace("\n", " ")));
+        }
 
         String context = similarDocuments.stream()
                 .map(Document::getContent)
