@@ -4,11 +4,10 @@ import axios from 'axios'
 import './index.css'
 import App from './App.jsx'
 
-// In production (Vercel), VITE_API_BASE_URL points to the Render backend.
-// In local dev, VITE_API_BASE_URL is set to http://localhost:8081 via .env.local.
-// DO NOT fall back to the Render URL — that would bypass the Vite proxy locally
-// and hit Render cold-start timeouts, causing "Network error" on every first request.
-axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '';
+// In production (Vercel), VITE_API_BASE_URL should point to the Render backend.
+// If it is not set on Vercel, we fallback to the deployed Render backend URL.
+// In local dev, we default to empty string so it hits the local Vite proxy.
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '' : 'https://ai-documnet-analyzer.onrender.com');
 
 // Set a reasonable timeout so we don't wait forever if the backend is unreachable
 axios.defaults.timeout = 60000; // 60 seconds (accounts for Render cold-start)
