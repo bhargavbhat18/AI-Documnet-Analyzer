@@ -29,8 +29,12 @@ public class ChatService {
     }
 
     public ChatResponse chat(String query, String documentName) {
-        SearchRequest searchRequest;
+        System.out.println("==================================================");
+        System.out.println("VERIFY RETRIEVAL");
+        System.out.println("User question: " + query);
+        System.out.println("Requested document scope filter: " + (documentName != null && !documentName.isEmpty() ? documentName : "All Documents"));
         
+        SearchRequest searchRequest;
         if (documentName != null && !documentName.isEmpty()) {
             searchRequest = SearchRequest.query(query)
                 .withFilterExpression("documentName == '" + documentName + "'")
@@ -41,16 +45,28 @@ public class ChatService {
         
         List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
         
-        System.out.println("[CHAT SERVICE] Retrieved " + similarDocuments.size() + " chunks from ChromaDB for query: " + query);
-        for (int i = 0; i < similarDocuments.size(); i++) {
-            Document doc = similarDocuments.get(i);
-            String snippet = doc.getContent();
-            if (snippet.length() > 100) {
-                snippet = snippet.substring(0, 100) + "...";
+        System.out.println("Retrieved chunk count: " + similarDocuments.size());
+        
+        if (similarDocuments.isEmpty()) {
+            System.out.println("WARNING: Zero chunks returned from ChromaDB!");
+            if (documentName != null && !documentName.isEmpty()) {
+                System.out.println("Reason: No chunks match the filter 'documentName == \"" + documentName + "\"' or the document was never embedded.");
+            } else {
+                System.out.println("Reason: ChromaDB is empty or none of the chunks match the query embedding.");
             }
-            System.out.println(String.format("  Chunk #%d - Metadata: %s - Content: %s", i + 1, doc.getMetadata(), snippet.replace("\n", " ")));
+        } else {
+            for (int i = 0; i < similarDocuments.size(); i++) {
+                Document doc = similarDocuments.get(i);
+                System.out.println(String.format("  Chunk #%d - ID: %s - Filename: %s - Content preview: %s", 
+                        i + 1, 
+                        doc.getId(), 
+                        doc.getMetadata().getOrDefault("documentName", "Unknown"), 
+                        doc.getContent().substring(0, Math.min(doc.getContent().length(), 150)).replace("\n", " ")
+                ));
+            }
         }
-
+        System.out.println("==================================================");
+        
         // Extract list of unique source document names retrieved from metadata
         List<String> sources = similarDocuments.stream()
                 .map(d -> (String) d.getMetadata().getOrDefault("documentName", "Unknown"))
@@ -80,7 +96,18 @@ public class ChatService {
             "The uploaded document does not contain this information."
             Do NOT hallucinate or use any external knowledge.
             """;
-            
+
+        // --- VERIFY PROMPT ---
+        String compiledPrompt = systemPrompt
+                .replace("{documentNameHeader}", docNameHeader)
+                .replace("{context}", context.isEmpty() ? "[NO CONTEXT RETRIEVED - EMPTY]" : context)
+                .replace("{query}", query);
+        
+        System.out.println("==================================================");
+        System.out.println("VERIFY PROMPT");
+        System.out.println("Prompt sent to LLM:\n" + compiledPrompt);
+        System.out.println("==================================================");
+
         String responseContent = chatClient.prompt()
                 .system(s -> s.text(systemPrompt)
                               .param("documentNameHeader", docNameHeader)
@@ -89,6 +116,11 @@ public class ChatService {
                 .user(query)
                 .call()
                 .content();
+
+        System.out.println("==================================================");
+        System.out.println("LLM RESPONSE");
+        System.out.println(responseContent);
+        System.out.println("==================================================");
 
         return ChatResponse.builder()
                 .response(responseContent)

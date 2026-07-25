@@ -68,15 +68,60 @@ public class DocumentService {
                 
         logger.info("[UPLOAD STEP 2] Parsing document contents into text chunks: {}", filename);
         List<DocumentChunk> rawPages = parser.parse(file);
-        logger.info("[UPLOAD STEP 2 SUCCESS] Parsed document: {}. Extracted {} raw text pages/sections.", 
-                filename, rawPages.size());
+        
+        // --- VERIFY TEXT EXTRACTION ---
+        long totalTextLength = rawPages.stream().mapToLong(p -> p.getText() != null ? p.getText().length() : 0).sum();
+        logger.info("==================================================");
+        logger.info("VERIFY TEXT EXTRACTION");
+        logger.info("File name: {}", filename);
+        logger.info("Extracted text length: {}", totalTextLength);
+        logger.info("Page count: {}", rawPages.size());
+        
+        if (totalTextLength == 0) {
+            logger.error("[UPLOAD FAILED] Extracted text length is 0 for file: {}", filename);
+            throw new IllegalStateException("Extracted text length is 0. Parser failed to extract any characters.");
+        }
+        
+        StringBuilder preview = new StringBuilder();
+        for (DocumentChunk page : rawPages) {
+            if (page.getText() != null) {
+                preview.append(page.getText()).append("\n");
+            }
+        }
+        String previewStr = preview.substring(0, Math.min(preview.length(), 1000));
+        logger.info("First 1000 characters:\n{}", previewStr);
+        logger.info("==================================================");
         
         logger.info("[UPLOAD STEP 3] Splitting raw text into semantic search chunks: {}", filename);
         List<DocumentChunk> chunkedPages = chunker.chunk(rawPages);
-        logger.info("[UPLOAD STEP 3 SUCCESS] Chunked document: {}. Created {} semantic search chunks.", 
-                filename, chunkedPages.size());
+        
+        // --- VERIFY CHUNKING ---
+        logger.info("==================================================");
+        logger.info("VERIFY CHUNKING");
+        logger.info("Chunk count: {}", chunkedPages.size());
+        if (!chunkedPages.isEmpty()) {
+            logger.info("Chunk size (approx character count of first chunk): {}", chunkedPages.get(0).getText().length());
+        }
+        logger.info("Print first three chunks:");
+        for (int i = 0; i < Math.min(chunkedPages.size(), 3); i++) {
+            logger.info("  Chunk #{}: {}", i + 1, chunkedPages.get(i).getText());
+        }
+        logger.info("==================================================");
         
         logger.info("[UPLOAD STEP 4] Generating embeddings & saving chunks to ChromaDB vector store: {}", filename);
+        
+        // --- VERIFY VECTOR STORAGE ---
+        logger.info("==================================================");
+        logger.info("VERIFY VECTOR STORAGE");
+        logger.info("Embedding creation request triggered for document: {}", filename);
+        logger.info("Collection name: document_chunks (default)");
+        logger.info("Vector count to insert: {}", chunkedPages.size());
+        if (!chunkedPages.isEmpty()) {
+            logger.info("Metadata format preview: documentName={}, pageNumber={}", 
+                    chunkedPages.get(0).getDocumentName(), chunkedPages.get(0).getPageNumber());
+        }
+        logger.info("==================================================");
+        
         vectorStoreService.addChunks(chunkedPages);
         logger.info("[UPLOAD STEP 4 SUCCESS] Successfully stored chunks in ChromaDB for document: {}", filename);
         
