@@ -3,7 +3,6 @@ package com.analyzer.document.controller;
 import com.analyzer.document.entity.DocumentMetadata;
 import com.analyzer.document.repository.DocumentMetadataRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +13,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/analytics")
-@CrossOrigin(origins = "${cors.allowed.origins}")
 public class AnalyticsController {
 
     private final DocumentMetadataRepository metadataRepository;

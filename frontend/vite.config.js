@@ -8,9 +8,13 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // In local dev, /api requests are proxied to the local Spring Boot backend.
+      // VITE_API_BASE_URL (from .env.local) determines the target.
+      // When baseURL is empty (''), axios uses relative paths that hit this proxy.
       '/api': {
-        target: 'http://localhost:8081',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8081',
         changeOrigin: true,
+        secure: false,
       }
     }
   }

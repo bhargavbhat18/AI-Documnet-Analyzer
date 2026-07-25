@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/feedback")
-@CrossOrigin(origins = "${cors.allowed.origins}")
 public class FeedbackController {
 
     private final UserFeedbackRepository feedbackRepository;

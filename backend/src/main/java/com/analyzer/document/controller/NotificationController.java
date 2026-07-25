@@ -12,7 +12,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "${cors.allowed.origins}")
 public class NotificationController {
 
     private final UserNotificationRepository notificationRepository;

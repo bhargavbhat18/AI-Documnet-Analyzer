@@ -11,7 +11,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/templates")
-@CrossOrigin(origins = "${cors.allowed.origins}")
 public class TemplateController {
 
     private final DocumentTemplateRepository templateRepository;
