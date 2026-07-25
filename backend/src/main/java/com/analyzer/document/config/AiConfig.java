@@ -20,7 +20,7 @@ public class AiConfig {
     @Value("${spring.ai.openai.base-url:https://generativelanguage.googleapis.com/v1beta/openai}")
     private String chatBaseUrl;
 
-    @Value("${spring.ai.openai.chat.options.model:gemini-1.5-flash}")
+    @Value("${spring.ai.openai.chat.options.model:gemini-flash-latest}")
     private String chatModel;
 
     // ─── Cohere Embeddings (via OpenAI-compatible endpoint) ─────────────────────
