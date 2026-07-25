@@ -48,14 +48,17 @@ public class ChatService {
         System.out.println("Retrieved chunk count: " + similarDocuments.size());
         
         if (similarDocuments.isEmpty()) {
-            System.out.println("WARNING: Zero chunks returned from ChromaDB!");
-            if (documentName != null && !documentName.isEmpty()) {
-                System.out.println("Reason: No chunks match the filter 'documentName == \"" + documentName + "\"' or the document was never embedded.");
-            } else {
-                System.out.println("Reason: ChromaDB is empty or none of the chunks match the query embedding.");
-            }
-        } else {
-            for (int i = 0; i < similarDocuments.size(); i++) {
+            String errorMsg = String.format(
+                "RAG Retrieval Failed: Retrieved 0 chunks from ChromaDB for query '%s'. " +
+                "Possible reasons: 1) The document '%s' was uploaded before the Cohere embeddings API base URL was fixed (please delete and re-upload it to re-index). " +
+                "2) Vector storage failed during ingestion. 3) Metadata filtering failed to match the document name.",
+                query, (documentName != null && !documentName.isEmpty() ? documentName : "All Documents")
+            );
+            System.out.println("ERROR: " + errorMsg);
+            throw new IllegalStateException(errorMsg);
+        }
+
+        for (int i = 0; i < similarDocuments.size(); i++) {
                 Document doc = similarDocuments.get(i);
                 System.out.println(String.format("  Chunk #%d - ID: %s - Filename: %s - Content preview: %s", 
                         i + 1, 
@@ -64,7 +67,6 @@ public class ChatService {
                         doc.getContent().substring(0, Math.min(doc.getContent().length(), 150)).replace("\n", " ")
                 ));
             }
-        }
         System.out.println("==================================================");
         
         // Extract list of unique source document names retrieved from metadata
